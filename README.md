@@ -18,7 +18,7 @@ Using this module makes it possible to make advantage of the comfort features of
         - [EDIABAS class](#ediabas-class)
         - [statics](#statics)
         - [utils](#utils)
-        - [api32](#api32)
+        - [api](#api)
     - [ecu module](#ecu-module)
         - [ECU class](#ecu-class)
         - [MSD80 class](#msd80-class)
@@ -65,8 +65,8 @@ I'm using the [MaxDia Diag 2+](https://www.obdexpert.de/shopware/diagnose-artike
 > I don't get payed by obdexpert.de, its just as personal recommendation based on my experience. There may be lots of other cables out there which will be as good or even better as my suggestion, but I've never used them.
 
 ### Python Version and dependencies
-This module has been developed using `Python 3.12 32bit` and tested on `Python 3.13 32bit`. The minimum required version is `Python 3.10 32bit`.
-As **EDIABAS** uses 32bits memory addresses, a 32bit Python version is necessary to load the **EDIABAS** dynamic library ("api32.dll"). Running this package on a 64bit Python version will fail!
+This module has been developed using `Python 3.12` and tested on `Python 3.13`. The minimum required version is `Python 3.10`.
+Both 32-bit and 64-bit Python are supported: 32-bit Python loads `api32.dll`, 64-bit Python loads `api64.dll`. The matching DLL must be available via your EDIABAS installation's `bin` directory on the system `PATH`.
 
 
 ## 3 Installation
@@ -81,7 +81,7 @@ To get your first data out of **pydiabas** you just need a few lines of code.
 It's not necessary to have your OBD cable connected to your PC as `TMODE` is a simulated ECU which can be accessed without being connected to a car.
 
 ```py
-# Make sure to use a 32bit Python version!
+# Works on 32-bit and 64-bit Python (api32.dll / api64.dll selected automatically)
 
 # Import the PyDIABAS class from the pydiabas module
 from pydiabas import PyDIABAS
@@ -96,8 +96,7 @@ with PyDIABAS() as pydiabas:
     # Access result data
     print(result["TYP"]) # prints: b'OBD'
 ```
-> __Info:__ If you get the following error you are most probably using a 64bit Python version.  
-> `OSError: [WinError 193] %1 is not a valid Win32 application`
+> __Info:__ If you get `OSError: Unable to locate the EDIABAS 'apiXX.dll' library...` the matching DLL for your Python bitness can't be found on the system `PATH`. Make sure the EDIABAS `bin` directory is on `PATH` and that it contains the DLL for your Python bitness (`api32.dll` for 32-bit Python, `api64.dll` for 64-bit Python).
 
 
 ## 5 Module Documentation
@@ -930,8 +929,9 @@ Provides helper functions for a more comfortable and clean way of interaction wi
 > Optional parameter **set** must be an *int*.  
 > **Returns** the value of the data or *None*.
 
-#### api32
-Is just a wrapper around the `api32.dll` library, loading this library and extracting all the functions.
+#### api
+Wrapper around the EDIABAS API library. Loads `api32.dll` on 32-bit Python or `api64.dll` on 64-bit Python and exposes the API entry points as module attributes.
+The legacy `api32` submodule name is kept as a thin alias for backward compatibility.
 
 
 ### ecu module
@@ -1664,7 +1664,7 @@ file_path = save_jobs_to_file(captured_jobs)
 ## 6 Tests
 There are test which can be run without being connected to an ECU and some other tests need a specific ECU to be connected.  
 A working **EDIABAS** system ist required. To solve the most common communication problems with **EDIABAS** please consult the section [EDIABAS Troubleshooting](#8-ediabas-troubleshooting). Steps 1-3 must be completed successful to run the offline test and steps 4-5 in addition to be able to run online tests.
-The test must be executed using `pytest` on a 32bit Python version.
+The test must be executed using `pytest`. Both 32-bit and 64-bit Python work — just make sure the matching EDIABAS DLL (`api32.dll` or `api64.dll`) is installed and reachable on your `PATH`.
 Current test coverage is 99%.
 Use the following command to run all test
 ```
@@ -1704,9 +1704,6 @@ There are some additional arguments to modify test execution as follows:
 
 
 ## 7 Limitations
-### 32bit Python version
-As **EDIABAS** is using a 32bit architecture, a 32bit Python version must be used to be able to load the `api32.dll` library.
-
 ### EDIABAS Multi Threading
 It seems that **EDIABAS** allows multithreading in some way, but I didn't figure out how to use it or why it isn't working in my computer.
 
@@ -1724,27 +1721,28 @@ Add further classes providing specific functionality for single ECUs.
 Here are some common reasons for problems with getting a connection to your car.
 
 ### 1. Check your Windows Environment Variables
-Make sure that the `/bin` folder of your **EDIABAS** installation (default: `C:\EDIABAS\bin`) is set as *system environment variable*. This is needed to be able to load the `api32.dll` library.
+Make sure that the `/bin` folder of your **EDIABAS** installation (default: `C:\EDIABAS\bin`) is set as *system environment variable*. This is needed to be able to load the `api32.dll` / `api64.dll` library.
 
-### 2. Using a 32bit Python version
-Make sure your are using a 32bit Python version when using this module.  
-If your are using a 64bit Python version and importing the pydiabas library you will get the following error message:
+### 2. Matching Python and DLL bitness
+Both 32-bit and 64-bit Python are supported. At import time the module picks the matching DLL — `api32.dll` for 32-bit Python, `api64.dll` for 64-bit Python — so you just need to make sure the right file is reachable via your EDIABAS `bin` directory on the system `PATH`.
+
+If the matching DLL is missing from `PATH`, import will fail with:
 ```
 >>> import pydiabas
 Traceback (most recent call last):
  ...
- ...
+OSError: Unable to locate the EDIABAS 'api64.dll' library. Make sure EDIABAS is installed and its 'bin' directory is on the system PATH.
+```
+
+If the DLL on `PATH` was installed with the wrong architecture (e.g. a 32-bit binary named `api64.dll`), Windows reports:
+```
 OSError: [WinError 193] %1 is not a valid Win32 application
 ```
-To check if you are using a 32bit Python version your can simply check the length of a memory access of any object like this:
-```
-# On a 64bit Python addresses are 12 characters long
->>> hex(id(None))
-'0x7fff32736cc8'
 
-# On a 32bit Python addresses are 8 characters long
->>> hex(id(None))
-'0x607c0340'
+To check your Python bitness:
+```
+>>> import ctypes; ctypes.sizeof(ctypes.c_void_p) * 8
+64
 ```
 
 
@@ -1829,6 +1827,13 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## 11 Change Log
+### Unreleased
+#### New Features
+- 64-bit Python support: `api64.dll` is loaded automatically when running on a 64-bit Python interpreter; 32-bit Python continues to load `api32.dll`.
+- Result-scope handle (`apiResultsNew` / `apiResultsScope` / `apiResultsDelete`) declared as `c_void_p` so the full-width pointer is preserved on 64-bit builds.
+#### Miscellaneous
+- The legacy `pydiabas.ediabas.api32` module is kept as an alias and now forwards to the new bitness-aware `pydiabas.ediabas.api` module.
+
 ### 1.2.0 (03.02.2025)
 #### New Features
 - *job()* method added to ECU class

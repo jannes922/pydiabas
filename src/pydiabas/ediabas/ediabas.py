@@ -4,13 +4,13 @@
 from __future__ import annotations
 import ctypes
 
-from . import api32
+from . import api
 from . import statics
 from .exceptions import JobFailedError, VersionCheckError
 
 
 class EDIABAS:
-    """Class to interact with the EDIABAS Api api32.dll
+    """Class to interact with the EDIABAS Api (api32.dll on 32-bit Python, api64.dll on 64-bit Python)
 
     Configuration options trough setConfig():
         apiTrace: Controls the type and intensity (default: 0)
@@ -133,7 +133,7 @@ class EDIABAS:
         """
 
         # Value of _handle will be set through side effect of apiInit function
-        job_status = api32.apiInit(ctypes.byref(self._handle))
+        job_status = api.apiInit(ctypes.byref(self._handle))
 
         if not job_status:
             raise JobFailedError
@@ -173,7 +173,7 @@ class EDIABAS:
         configuration = EDIABAS._process_text_argument(configuration)
 
         # Value of _handle will be set through side effect of apiInit function
-        job_status = api32.apiInitExt(
+        job_status = api.apiInitExt(
             ctypes.byref(self._handle),
             ifh,
             deviceUnit,
@@ -188,13 +188,13 @@ class EDIABAS:
         """Stops the current job. All results will be lost."""
 
         # Break the current job
-        api32.apiBreak(self._handle)
+        api.apiBreak(self._handle)
 
     def end(self) -> None:
         """Stops EDIABAS API and frees used memory again."""
 
         # Stop EDIABAS API
-        api32.apiEnd(self._handle)
+        api.apiEnd(self._handle)
 
     def state(self) -> statics.API_STATE:
         """Retrieves current EDIABAS API state and returns the value as API_STATE IntEnum type.
@@ -204,7 +204,7 @@ class EDIABAS:
         """
 
         # Get current state of EDIABAS API
-        state = api32.apiState(self._handle)
+        state = api.apiState(self._handle)
 
         # Return translated API state
         return statics.API_STATE(state)
@@ -220,7 +220,7 @@ class EDIABAS:
         text = self._process_text_argument(text)
 
         # Call function with encoded text (bytestring)
-        api32.apiTrace(self._handle, text)
+        api.apiTrace(self._handle, text)
 
     @staticmethod
     def checkVersion(min_version: str | bytes = "7.0") -> str:
@@ -257,7 +257,7 @@ class EDIABAS:
         version = ctypes.create_string_buffer(statics.API_MAX_CONFIG)
 
         # Call the function and retrieve the status
-        job_status = api32.apiCheckVersion(min_version, version)
+        job_status = api.apiCheckVersion(min_version, version)
 
         # Check if minimum version check has been passed
         if not job_status:
@@ -288,7 +288,7 @@ class EDIABAS:
 
         # Call the job and get save its return value
         # Variable value will be copied to cfg_value through side effect of the called function
-        job_status = api32.apiGetConfig(self._handle, name, cfg_value)
+        job_status = api.apiGetConfig(self._handle, name, cfg_value)
 
         if not job_status:
             raise JobFailedError
@@ -313,7 +313,7 @@ class EDIABAS:
         value = EDIABAS._process_text_argument(value)
 
         # Call job with encoded data and store its return value
-        job_status = api32.apiSetConfig(self._handle, name, value)
+        job_status = api.apiSetConfig(self._handle, name, value)
 
         if not job_status:
             raise JobFailedError
@@ -326,7 +326,7 @@ class EDIABAS:
         """
 
         # Call job and store return value es error code
-        error_code = api32.apiErrorCode(self._handle)
+        error_code = api.apiErrorCode(self._handle)
 
         # Return the received error code
         return error_code
@@ -342,7 +342,7 @@ class EDIABAS:
         error_text = ctypes.create_string_buffer(statics.API_MAX_TEXT)
 
         # Call the job and save the return value (Null or pointer to char array)
-        job_status = api32.apiErrorText(
+        job_status = api.apiErrorText(
             self._handle, error_text, ctypes.c_int(statics.API_MAX_TEXT)
         )
 
@@ -380,7 +380,7 @@ class EDIABAS:
         results = EDIABAS._process_text_argument(results)
 
         # Send job to ECU
-        api32.apiJob(self._handle, ecu, job_name, job_param, results)
+        api.apiJob(self._handle, ecu, job_name, job_param, results)
 
     def jobData(
         self,
@@ -409,7 +409,7 @@ class EDIABAS:
         results = EDIABAS._process_text_argument(results)
 
         # Send job to ECU
-        api32.apiJobData(
+        api.apiJobData(
             self._handle,
             ecu,
             job_name,
@@ -451,7 +451,7 @@ class EDIABAS:
 
         # Send job to ECU
         # Last parameter is always c_long(0) as it is not yet used by EDIABAS and reserved for further extension
-        api32.apiJobData(
+        api.apiJobData(
             self._handle,
             ecu,
             job_name,
@@ -478,7 +478,7 @@ class EDIABAS:
         info_text = ctypes.create_string_buffer(statics.API_MAX_TEXT)
 
         # Call job and receive return value, info_text will be set trough side effect of called function
-        job_status = api32.apiJobInfo(self._handle, info_text)
+        job_status = api.apiJobInfo(self._handle, info_text)
 
         # Return job status as str with additional info if requested by text parameter
         if text:
@@ -512,7 +512,7 @@ class EDIABAS:
         result_len = ctypes.c_ushort()
 
         # Get the result from the ECU
-        job_status = api32.apiResultBinary(
+        job_status = api.apiResultBinary(
             self._handle,
             ctypes.byref(result),
             ctypes.byref(result_len),
@@ -558,7 +558,7 @@ class EDIABAS:
         result_len = ctypes.c_ushort()
 
         # Get the result from the ECU
-        job_status = api32.apiResultBinaryExt(
+        job_status = api.apiResultBinaryExt(
             self._handle,
             ctypes.byref(result),
             ctypes.byref(result_len),
@@ -598,7 +598,7 @@ class EDIABAS:
         result = ctypes.c_ubyte()
 
         # Get the result from the ECU
-        job_status = api32.apiResultByte(
+        job_status = api.apiResultByte(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -633,7 +633,7 @@ class EDIABAS:
         result = ctypes.c_char()
 
         # Get the result from the ECU
-        job_status = api32.apiResultChar(
+        job_status = api.apiResultChar(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -668,7 +668,7 @@ class EDIABAS:
         result = ctypes.c_ushort()
 
         # Get the result from the ECU
-        job_status = api32.apiResultDWord(
+        job_status = api.apiResultDWord(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -703,7 +703,7 @@ class EDIABAS:
         result = ctypes.c_short()
 
         # Get the result from the ECU
-        job_status = api32.apiResultInt(
+        job_status = api.apiResultInt(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -738,7 +738,7 @@ class EDIABAS:
         result = ctypes.c_long()
 
         # Get the result from the ECU
-        job_status = api32.apiResultLong(
+        job_status = api.apiResultLong(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -773,7 +773,7 @@ class EDIABAS:
         result = ctypes.c_double()
 
         # Get the result from the ECU
-        job_status = api32.apiResultReal(
+        job_status = api.apiResultReal(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -841,7 +841,7 @@ class EDIABAS:
         result = ctypes.create_string_buffer(statics.API_MAX_TEXT)
 
         # Get the result from the ECU
-        job_status = api32.apiResultText(
+        job_status = api.apiResultText(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set), format
         )
 
@@ -879,7 +879,7 @@ class EDIABAS:
         result = ctypes.c_uint()
 
         # Get the result from the ECU
-        job_status = api32.apiResultWord(
+        job_status = api.apiResultWord(
             self._handle, ctypes.byref(result), name, ctypes.c_int(set)
         )
 
@@ -904,7 +904,7 @@ class EDIABAS:
         result = ctypes.create_string_buffer(statics.API_MAX_RESULT)
 
         # Get the result from the ECU
-        job_status = api32.apiResultVar(self._handle, result)
+        job_status = api.apiResultVar(self._handle, result)
 
         # Check if date has been received
         if not job_status:
@@ -928,7 +928,7 @@ class EDIABAS:
         result = ctypes.c_ushort()
 
         # Get the result from the ECU
-        job_status = api32.apiResultSets(self._handle, ctypes.byref(result))
+        job_status = api.apiResultSets(self._handle, ctypes.byref(result))
 
         # Check if date has been received
         if not job_status:
@@ -955,7 +955,7 @@ class EDIABAS:
         result = ctypes.c_ushort()
 
         # Get the result from the ECU
-        job_status = api32.apiResultNumber(self._handle, ctypes.byref(result), set)
+        job_status = api.apiResultNumber(self._handle, ctypes.byref(result), set)
 
         # Check if date has been received
         if not job_status:
@@ -986,7 +986,7 @@ class EDIABAS:
         result = ctypes.create_string_buffer(statics.API_MAX_RESULT)
 
         # Get the result from the ECU
-        job_status = api32.apiResultName(
+        job_status = api.apiResultName(
             self._handle, ctypes.byref(result), position, set
         )
 
@@ -1024,7 +1024,7 @@ class EDIABAS:
         result = ctypes.c_int()
 
         # Get the result from the ECU
-        job_status = api32.apiResultFormat(
+        job_status = api.apiResultFormat(
             self._handle, ctypes.byref(result), name, set
         )
 
@@ -1044,7 +1044,7 @@ class EDIABAS:
         """
 
         # Call job and save return value
-        result_address = api32.apiResultsNew(self._handle)
+        result_address = api.apiResultsNew(self._handle)
 
         # Return data
         return result_address
@@ -1058,7 +1058,7 @@ class EDIABAS:
         """
 
         # Set address
-        api32.apiResultsScope(self._handle, address)
+        api.apiResultsScope(self._handle, address)
 
     def resultsDelete(self, address: int) -> None:
         """Deletes the saved results at the given address and free the used memory.
@@ -1068,7 +1068,7 @@ class EDIABAS:
         """
 
         # Free memory
-        api32.apiResultsDelete(self._handle, address)
+        api.apiResultsDelete(self._handle, address)
 
     @staticmethod
     def _process_text_argument(arg: str | bytes) -> bytes:
