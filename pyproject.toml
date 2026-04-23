@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydiabas"
+version = "1.3.0.dev0"
+description = "Python wrapper around the BMW EDIABAS API for communication with ECUs (32-bit and 64-bit Python)."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Aljoscha Greim", email = "aljoscha@bembelbytes.com" },
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/jannes922/pydiabas"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pydiabas*"]
+exclude = ["test*"]
