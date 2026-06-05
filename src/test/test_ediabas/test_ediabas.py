@@ -163,6 +163,37 @@ class TestEdiabas:
         with pytest.raises(JobFailedError):
             ediabas.resultBinaryExt(name="TYP", set=1, max_length=1)
 
+    def test_resultBinary_preserves_null_bytes(self, monkeypatch):
+        # Regression: binary results may contain or even start with 0x00. The
+        # full value reported by the API length must be returned, not truncated
+        # at the first null byte (which result.value would do).
+        payload = b"\x00\x12\x00\x34"
+
+        def fake_apiResultBinary(handle, buf_ref, len_ref, name, set_):
+            ctypes.memmove(buf_ref._obj, payload, len(payload))
+            len_ref._obj.value = len(payload)
+            return 1
+
+        monkeypatch.setattr(
+            "pydiabas.ediabas.ediabas.api.apiResultBinary", fake_apiResultBinary
+        )
+
+        assert EDIABAS().resultBinary("ANY") == payload
+
+    def test_resultBinaryExt_preserves_null_bytes(self, monkeypatch):
+        payload = b"\x00\x12\x00\x34"
+
+        def fake_apiResultBinaryExt(handle, buf_ref, len_ref, buf_size, name, set_):
+            ctypes.memmove(buf_ref._obj, payload, len(payload))
+            len_ref._obj.value = len(payload)
+            return 1
+
+        monkeypatch.setattr(
+            "pydiabas.ediabas.ediabas.api.apiResultBinaryExt", fake_apiResultBinaryExt
+        )
+
+        assert EDIABAS().resultBinaryExt(name="ANY", set=1) == payload
+
     def test__process_text_argument(self):
         assert EDIABAS._process_text_argument(b"TEst") == b"TEst"
         assert EDIABAS._process_text_argument("TEst") == b"TEst"

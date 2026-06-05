@@ -524,8 +524,10 @@ class EDIABAS:
         if not job_status:
             raise JobFailedError()
 
-        # Return result as bytes
-        return result.value
+        # Return result as bytes. Use the length reported by the API instead of
+        # result.value: binary data may contain (or start with) 0x00 bytes, and
+        # result.value would silently truncate at the first null byte.
+        return result.raw[: result_len.value]
 
     def resultBinaryExt(
         self, name: str | bytes, set: int = 1, max_length: int = statics.API_MAX_BINARY
@@ -550,19 +552,22 @@ class EDIABAS:
         # Convert arguments to bytes if given as strings
         name = EDIABAS._process_text_argument(name)
 
-        # Check that given maximum length is limited to statics.API_MAX_BINARY
-        max_length = min(max_length, statics.API_MAX_BINARY)
+        # Check that given maximum length is limited to statics.API_MAX_BINARYEXT
+        max_length = min(max_length, statics.API_MAX_BINARYEXT)
 
-        # Initialize variables to store the answer
+        # Initialize variables to store the answer.
+        # buflen and bufSize are APIDWORD (32-bit) in __apiResultBinaryExt, so a
+        # c_ushort here would let the DLL write 4 bytes into a 2-byte field and
+        # cap reads at 65535 bytes.
         result = ctypes.create_string_buffer(max_length)
-        result_len = ctypes.c_ushort()
+        result_len = ctypes.c_uint32()
 
         # Get the result from the ECU
         job_status = api.apiResultBinaryExt(
             self._handle,
             ctypes.byref(result),
             ctypes.byref(result_len),
-            ctypes.c_ushort(max_length),
+            ctypes.c_uint32(max_length),
             name,
             ctypes.c_int(set),
         )
@@ -571,8 +576,10 @@ class EDIABAS:
         if not job_status:
             raise JobFailedError()
 
-        # Return result as bytes
-        return result.value
+        # Return result as bytes. Use the length reported by the API instead of
+        # result.value: binary data may contain (or start with) 0x00 bytes, and
+        # result.value would silently truncate at the first null byte.
+        return result.raw[: result_len.value]
 
     def resultByte(self, name: str | bytes, set: int = 1) -> int:
         """Retrieves BYTE (unsigned byte) data from an API job result.
